@@ -8,4 +8,4 @@ Read [AGENTS.md](AGENTS.md) and the applicable scoped guide first. Essential rul
 4. Make the smallest authorized change and verify the actual behavior.
 5. Report evidence, review gaps, and one next action; save state only when authorized.
 
-Honor [aliases and modes](SHORTCUTS.md), [naming](CHAT_NAMING.md), and [ownership](docs/delivery/development-team.md). Use X only for the actual Codex environment. Check identity, confirmed prefix, available inventory/assignments, and the saved native title. Silently continue the task if naming cannot proceed safely.
+Honor [request aliases](SHORTCUTS.md), [naming](CHAT_NAMING.md), and [ownership](docs/delivery/development-team.md). Use X only for the actual Codex environment. Check identity, confirmed prefix, available inventory/assignments, and the saved native title. Silently continue the task if naming cannot proceed safely.
