@@ -1,39 +1,51 @@
 # Bamboo Pulse
 
-Bamboo Pulse is a macOS menu-bar app for following Codex Desktop sessions. See which sessions are working, which need a response, and which have ended. Select a live session to open its chat when the feed provides a valid destination.
+Bamboo Pulse is a macOS menu-bar app for following local Codex chats. See which sessions are working, which need a response, and which have ended. Select a live session to open its chat when a valid destination is available.
 
 **Author** · [Dantino](https://dantino.vn) · [MIT license](LICENSE)
 
+![Bamboo Pulse Preview with sample sessions](docs/images/preview.png)
+
+*Preview rendering from the app's SwiftUI view with sample data. Live monitoring shows your observed sessions.*
+
+## Start here
+
+Follow the illustrated [Quick Start](docs/quick-start.md) to:
+
+1. [Check requirements and clone the repository](docs/quick-start.md#1-check-requirements-and-get-the-source).
+2. [Build and try Preview](docs/quick-start.md#2-build-and-try-preview).
+3. [Build an app with the monitoring runtime](docs/quick-start.md#3-build-the-app-with-its-monitoring-runtime).
+4. [Enable hooks and the observer](docs/quick-start.md#4-enable-local-codex-monitoring).
+5. [Verify live sessions and notifications](docs/quick-start.md#5-verify-monitoring).
+6. [Remove monitoring when needed](docs/quick-start.md#6-remove-monitoring).
+
+The current runtime package targets Apple silicon and expects the Codex executable inside `/Applications/ChatGPT.app`. Setup asks for consent before adding Codex hooks and a shell startup block. The guide explains those changes and the recovery steps.
+
 ## Try Preview
 
-Use a Mac with Xcode and a Swift 6 toolchain. The app targets macOS 14 or later. From a clone of this repository, run the following command and click the Bamboo Pulse icon in the menu bar.
+On a Mac with Xcode and a Swift 6 toolchain:
 
 ```sh
+git clone https://github.com/tongvtdan/Bamboo-Pulse.git
+cd Bamboo-Pulse
 ./script/build_and_run.sh --preview
 ```
 
-Preview shows labeled sample sessions. It needs no monitoring setup or developer signing identity. To debug in Xcode, open `BambooPulse.xcodeproj`, select **Bamboo Pulse Preview**, and run. The Swift package builds the core library only.
+Click the Bamboo Pulse menu-bar icon. Preview shows labeled sample sessions. For live monitoring, build the runtime bundle and complete [setup](docs/quick-start.md#3-build-the-app-with-its-monitoring-runtime). A plain Xcode build contains the native interface and core library.
 
-## Live monitoring
+## Develop and test
 
-The Live scheme reads a compatible local feed. A plain Xcode build does not bundle the monitoring runtime. Without a feed, Live reports its unavailable state. A packaged app can offer optional setup for Codex Desktop observation. Enabling it changes the current user's shell profile and Codex hooks. Review setup, removal and recovery before testing on an account you use.
-
-## Develop
+Open `BambooPulse.xcodeproj` and select **Bamboo Pulse Preview** or **Bamboo Pulse Live**. SwiftPM builds PulseCore only.
 
 ```sh
 swift test
 ./script/build_and_run.sh --preview --test
 ./script/build_and_run.sh --live --test
 ./script/build_and_run.sh --release --build-only
+python3 scripts/validate_project.py
 ```
 
-Start with [contributor workflow](WORKFLOW.md) for checks and [behavior and architecture](SPEC.md) for source ownership. Report a bug with your macOS version, the scheme and a minimal reproduction using sample data. Keep chat contents and local session identifiers out of public reports.
-
-## Work on the monitoring runtime
-
-[Runtime](Runtime/) contains the Python monitor, local feed, setup and packaging sources. Use Python 3.10 or newer to run the packager. The packaging command supports Apple silicon and verifies the SHA-256 of the full CPython 3.11.15 archive before using it. Download the archive once and set `PULSE_PYTHON_ARCHIVE` to its absolute path. See [dependency versions and notices](docs/dependencies.md).
-
-To stage a disposable payload, use a new output path. The packaged test suite uses temporary homes and sockets. The observer and its desktop-forwarding test currently expect the Codex CLI bundled inside `/Applications/ChatGPT.app`. Opening a chat also requires the registered Codex app. Preview and the native fixture tests work without those desktop integrations.
+For packaged runtime tests, set `PULSE_TEST_PAYLOAD` to a new staging path and use the pinned interpreter archive downloaded in the Quick Start. Use Python 3.10 or newer to run the packager. The tests use disposable homes and sockets; desktop forwarding requires the supported Codex executable.
 
 ```sh
 export PULSE_TEST_PAYLOAD="$(mktemp -d)/PulseRuntime"
@@ -41,8 +53,4 @@ python3 Runtime/pulse-runtime/package.py --python-archive "$PULSE_PYTHON_ARCHIVE
 python3 -B -m unittest discover -s Runtime/pulse-runtime/tests
 ```
 
-For a local unsigned image, run the following with a new output filename. A public download requires the separate [release checks](docs/release-checks.md).
-
-```sh
-Runtime/pulse-runtime/build-review-dmg.sh "$PULSE_PYTHON_ARCHIVE" "$PWD/Bamboo-Pulse-review.dmg"
-```
+See the [contributor workflow](WORKFLOW.md), [behavior and architecture](SPEC.md), [dependency versions and notices](docs/dependencies.md), and [binary release checks](docs/release-checks.md). Report problems through [GitHub issues](https://github.com/tongvtdan/Bamboo-Pulse/issues), using synthetic examples or redacted screenshots.
