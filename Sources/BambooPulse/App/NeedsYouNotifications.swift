@@ -45,7 +45,12 @@ final class NativeAttentionNotificationCenter: AttentionNotificationCenter {
     }
 
     func requestPermission() async throws {
-        _ = try await center.requestAuthorization(options: [.alert])
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            center.requestAuthorization(options: [.alert]) { @Sendable _, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume() }
+            }
+        }
     }
 
     func add(identifier: String, kind: AttentionNotificationKind) async throws {
@@ -54,7 +59,13 @@ final class NativeAttentionNotificationCenter: AttentionNotificationCenter {
         content.body = kind == .test ? "Click this notification to open Pulse." : "An observed session needs your attention. Open Pulse to check."
         content.threadIdentifier = "bamboo-pulse.attention"
         logger.info("Submitting local notification; test=\(kind == .test, privacy: .public)")
-        try await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil))
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            center.add(request) { @Sendable error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume() }
+            }
+        }
         logger.info("macOS accepted local notification; test=\(kind == .test, privacy: .public)")
     }
 
