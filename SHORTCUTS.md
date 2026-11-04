@@ -31,20 +31,4 @@ Local artifacts from safe test runs are permitted; no alias authorizes commits, 
 
 A compound request is interpreted as a sequence: "/Review the docs, then update the naming rules" authorizes the review followed by the explicitly requested documentation edits.
 
-## Modes select a perspective
-
-Keep an existing project/task MODE. Otherwise default to SYNTHESIS. Modes may stack; they do not change operation permissions.
-
-| Mode | Perspective |
-| --- | --- |
-| PRODUCT | User outcome, activation, retention, revenue |
-| ARCHITECTURE | Boundaries, data flow, maintainability |
-| PATENT | Invention/IP questions and evidence needs |
-| TRIZ | Contradictions and constrained invention |
-| GROWTH | Distribution and conversion after value |
-| PRETOTYPE | Cheapest credible test of an assumption |
-| CRITIC | Failure modes and contrary evidence |
-| SYNTHESIS | Reconcile product, engineering, and growth |
-
-
 See [Bamboo Pulse examples](docs/delivery/reusable-requests.md).

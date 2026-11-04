@@ -1,12 +1,25 @@
 # Bamboo Pulse
 
-Bamboo Pulse is a macOS menu-bar app for following local Codex chats. See which sessions are working, which need a response, and which have ended. Select a live session to open its chat when a valid destination is available.
+Bamboo Pulse is a macOS menu-bar app for following local Codex chats. See which sessions are working, which need your input, and which have finished a turn. Select a live session to open its chat when a valid destination is available.
 
 **Author** · [Dantino](https://dantino.vn) · [MIT license](LICENSE)
 
-![Bamboo Pulse Preview with sample sessions](docs/images/preview.png)
 
-*Preview rendering from the app's SwiftUI view with sample data. Live monitoring shows your observed sessions.*
+
+## Read the bamboo
+
+In **Normal** layout, each session has a bamboo stalk with three sections. The colored section and underline identify its current state.
+
+| Working | Needs you | Turn ended |
+| --- | --- | --- |
+| ![Working: green right section with an underline](docs/images/status-working.png) | ![Needs you: red-orange left section with an underline](docs/images/status-needs-you.png) | ![Turn ended: amber middle section with an underline](docs/images/status-turn-ended.png) |
+| Observed work is in progress. | Waiting for your input or permission. | The turn ended. Open the chat to check the result. |
+
+*Enlarged still renders of the app's bamboo views. In the app, Working shimmers and Needs you pulses; Reduce Motion keeps both still.*
+
+**Turn ended does not confirm success.** **Unknown** uses a neutral stalk without an underline when current status cannot be established. These are session states, not a progress bar.
+
+For text labels, open **Settings… → Display → Show session status** (off by default). **Compact** layout uses colored status symbols instead of stalks. See the [Quick Start](docs/quick-start.md#read-the-status) for the full guide.
 
 ## Start here
 
@@ -44,6 +57,14 @@ swift test
 ./script/build_and_run.sh --release --build-only
 python3 scripts/validate_project.py
 ```
+
+To regenerate the three status images from the app's SwiftUI views on macOS:
+
+```sh
+bash script/render_status_images.sh
+```
+
+The renderer uses the app's artwork and labels with fixed sample states, no animation, and a matching underline. It does not connect to a live feed or read chat data.
 
 For packaged runtime tests, set `PULSE_TEST_PAYLOAD` to a new staging path and use the pinned interpreter archive downloaded in the Quick Start. Use Python 3.10 or newer to run the packager. The tests use disposable homes and sockets; desktop forwarding requires the supported Codex executable.
 
