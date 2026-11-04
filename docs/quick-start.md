@@ -39,14 +39,27 @@ Click the bamboo icon in the macOS menu bar. The popover shows a **DEMO** badge 
 
 *Rendered from the app's actual SwiftUI Preview view using sample data. The state labels are enabled for this image. These sessions demonstrate the interface.*
 
-| State | Meaning |
-| --- | --- |
-| Working | Recent observed work is in progress. |
-| Needs you | The observed session is waiting for input or permission. |
-| Turn ended | The observed turn ended. Check the chat for its result. |
-| Unknown | Current status cannot be established. |
+### Read the status
 
-Open **Settings…** from the popover to choose the layout and show session status labels. Quit Preview using **Quit** before opening your packaged copy.
+Open **Settings… → Display**, keep **Layout** set to **Normal**, and turn on **Show session status** to display the state beside each session. Status text is off by default. **Show session labels** controls the session alias (such as `CX1`), not the state.
+
+| Working | Needs you | Turn ended |
+| --- | --- | --- |
+| ![Working: green right bamboo section with an underline](images/status-working.png) | ![Needs you: red-orange left bamboo section with an underline](images/status-needs-you.png) | ![Turn ended: amber middle bamboo section with an underline](images/status-turn-ended.png) |
+| Recent observed work is in progress. | The observed session is waiting for input or permission. | The observed turn ended. Check the chat for its result. |
+
+*Enlarged still renders of the app's actual bamboo views, using fixed sample states. These are a visual guide, not live session evidence.*
+
+Each stalk represents one session. Its three sections are status indicators, not steps in a progress bar:
+
+- **Working:** the right section is green and shimmers while visible.
+- **Needs you:** the left section is red-orange and pulses while visible. Return to the chat to respond.
+- **Turn ended:** the middle section is amber and stays still. This does not confirm that the task succeeded or that the chat is closed.
+- **Unknown:** the stalk stays neutral with no active underline. Current status cannot be established; check the monitoring message and the chat.
+
+The underline marks the active section without relying on color alone. macOS **Reduce Motion** stops the shimmer and pulse while preserving the color and underline. **Compact** layout replaces stalks with colored symbols: a green circle, red-orange exclamation mark, amber minus, or gray question mark.
+
+Preview uses sample sessions; selecting them cannot open a real chat. Quit Preview using **Quit** before opening your packaged copy.
 
 ## 3. Build the app with its monitoring runtime
 
@@ -100,6 +113,8 @@ Check the following observable results:
 - Selecting its row opens that same chat.
 - When Codex asks for input or permission, leave the prompt unanswered and check for **Needs you**. Respond in Codex and confirm that Pulse updates afterward.
 - After a turn finishes, inspect both its Pulse state and the actual result in the chat.
+
+Use the [status guide](#read-the-status) to compare each bamboo indicator. If state text is missing, enable **Show session status** in Settings.
 
 Session counts can be empty while monitoring is available. Generate new activity before concluding that observation failed. When updates become invalid or stale, Pulse shows recovery guidance and marks previous status Unknown.
 
