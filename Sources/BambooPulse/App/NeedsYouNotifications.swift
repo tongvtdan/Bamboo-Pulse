@@ -4,7 +4,7 @@ import OSLog
 import PulseCore
 import UserNotifications
 
-enum AttentionAuthorization { case notDetermined, allowed, denied, alertsDisabled }
+enum AttentionAuthorization: Sendable { case notDetermined, allowed, denied, alertsDisabled }
 enum AttentionNotificationKind { case needsYou, test }
 
 @MainActor
@@ -24,18 +24,24 @@ final class NativeAttentionNotificationCenter: AttentionNotificationCenter {
     private var lastSettings: [Int] = []
 
     func authorization() async -> AttentionAuthorization {
-        let settings = await center.notificationSettings()
-        let values = [settings.authorizationStatus.rawValue, settings.alertSetting.rawValue, settings.alertStyle.rawValue]
+        let (authorization, values): (AttentionAuthorization, [Int]) = await withCheckedContinuation { continuation in
+            center.getNotificationSettings { @Sendable settings in
+                let authorization: AttentionAuthorization
+                switch settings.authorizationStatus {
+                case .notDetermined: authorization = .notDetermined
+                case .authorized, .provisional:
+                    authorization = settings.alertSetting == .enabled ? .allowed : .alertsDisabled
+                default: authorization = .denied
+                }
+                let values = [settings.authorizationStatus.rawValue, settings.alertSetting.rawValue, settings.alertStyle.rawValue]
+                continuation.resume(returning: (authorization, values))
+            }
+        }
         if values != lastSettings {
             lastSettings = values
             logger.info("Notification settings: authorization=\(values[0], privacy: .public) alerts=\(values[1], privacy: .public) style=\(values[2], privacy: .public)")
         }
-        switch settings.authorizationStatus {
-        case .notDetermined: return .notDetermined
-        case .authorized, .provisional:
-            return settings.alertSetting == .enabled ? .allowed : .alertsDisabled
-        default: return .denied
-        }
+        return authorization
     }
 
     func requestPermission() async throws {
@@ -59,8 +65,16 @@ final class NativeAttentionNotificationCenter: AttentionNotificationCenter {
     }
 
     func clearOwned() async {
-        let pending = await center.pendingNotificationRequests().map(\.identifier)
-        let delivered = await center.deliveredNotifications().map { $0.request.identifier }
+        let pending: [String] = await withCheckedContinuation { continuation in
+            center.getPendingNotificationRequests { @Sendable requests in
+                continuation.resume(returning: requests.map(\.identifier))
+            }
+        }
+        let delivered: [String] = await withCheckedContinuation { continuation in
+            center.getDeliveredNotifications { @Sendable notifications in
+                continuation.resume(returning: notifications.map { $0.request.identifier })
+            }
+        }
         remove(identifiers: (pending + delivered).filter { $0.hasPrefix(Self.prefix) })
     }
 }
