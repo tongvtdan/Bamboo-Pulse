@@ -2,6 +2,17 @@
 
 Build Bamboo Pulse, enable monitoring for local Codex chats, and check the result. Author · [Dantino](https://dantino.vn).
 
+## Install a downloaded release
+
+The packaged app includes its monitoring runtime. You do not need Xcode, Git, or a separate Python installation to use it. Use an Apple silicon Mac with the supported ChatGPT/Codex desktop app installed at `/Applications/ChatGPT.app`.
+
+1. Download the DMG from [GitHub Releases](https://github.com/tongvtdan/Bamboo-Pulse/releases).
+2. Open it, drag **Bamboo Pulse.app** to **Applications**, and launch that installed copy. Keep it there while monitoring is enabled.
+3. Follow [Enable local Codex monitoring](#4-enable-local-codex-monitoring), including hook approval and restarting **both ChatGPT and Bamboo Pulse** afterward.
+4. [Verify a real session](#5-verify-monitoring).
+
+The numbered build sections below are for contributors building from source.
+
 ## 1. Check requirements and get the source
 
 You need an Apple silicon Mac for the bundled monitoring runtime, Xcode with a Swift 6 toolchain, Python 3.10 or newer for packaging, and Git. The app's deployment target is macOS 14. Hosted build checks run on macOS 15; qualify your own macOS and desktop-app combination before relying on it.
@@ -87,7 +98,7 @@ If macOS prevents this locally built copy from opening, record the exact message
 flowchart LR
     Build[Build bundled app] --> Install[Move to Applications]
     Install --> Consent[Enable monitoring]
-    Consent --> Hooks[Review hooks and restart desktop app]
+    Consent --> Hooks[Enable hooks and restart both apps]
     Hooks --> Verify[Observe a real local chat]
 ```
 
@@ -96,7 +107,8 @@ flowchart LR
 1. In Pulse, read **Set up Codex monitoring**, then choose **Enable monitoring**. **Set up later** lets you defer it.
 2. Quit ChatGPT completely and reopen it. This lets the desktop process pick up the observer configuration.
 3. Open a **local Codex chat**. Click the **Hooks** icon beside the message box and review the seven Bamboo Pulse commands. With a local project open, **Settings → Hooks** also lists them. Enable or approve these commands through the desktop app's hook controls if prompted.
-4. Keep Pulse running and continue in that local chat.
+4. **After enabling or approving the hooks, quit and reopen both ChatGPT and Bamboo Pulse.** Closing a window alone does not quit the app.
+5. Start a new local Codex task, then open Pulse's menu-bar popover to check that the session appears without a **DEMO** badge.
 
 Setup adds seven event hooks to `~/.codex/hooks.json` and a startup block to `~/.zshrc`. The events are `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `Stop`, and `Interrupt`. The observer follows the supported local Codex process and supplies session status to Pulse. Pulse reads local chat titles and status for display. Its setup component records its changes so removal can preserve other configuration.
 
@@ -104,7 +116,7 @@ If setup finds an existing observer, follow the displayed message. If you delibe
 
 ## 5. Verify monitoring
 
-Open a local Codex chat after restarting the desktop app. Send a small task, such as asking it to describe a file in your project. Open Pulse's menu-bar popover while it works.
+Open a local Codex chat after restarting both apps following hook approval. Send a small task, such as asking it to describe a file in your project. Open Pulse's menu-bar popover while it works.
 
 Check the following observable results:
 
@@ -130,7 +142,8 @@ Preview disables notifications. Use the packaged live app for this check.
 | --- | --- |
 | DEMO badge | Quit Preview and open the packaged app from Applications. |
 | No Manage monitoring button | Confirm this app contains `Contents/Resources/PulseRuntime`; rebuild the package if absent. |
-| Connection unavailable | Confirm setup completed, Pulse is running, ChatGPT was fully reopened, and the hooks are enabled. |
+| No sessions after enabling hooks | Quit and reopen both ChatGPT and Bamboo Pulse, then start a new local Codex task. Confirm the seven Bamboo Pulse hooks are enabled. |
+| Connection unavailable | Confirm setup completed, the hooks are enabled, and both ChatGPT and Bamboo Pulse were fully reopened after hook approval. |
 | Updates paused or Unknown | Generate new local activity. Pulse retries automatically; use Settings to inspect its monitoring message. |
 | Existing observer or configuration error | Retain the existing files and report the exact message. |
 | Chat fails to open | Open the Codex app once, then try a fresh observed session. |
