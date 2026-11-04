@@ -1,4 +1,4 @@
-name: Template validation
+name: Contributor documentation
 
 on:
   pull_request:
@@ -21,8 +21,8 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Validate template documentation
-        run: python3 scripts/validate_template.py
+      - name: Check contributor documentation
+        run: python3 scripts/validate_project.py
 
       - name: Check whitespace
         run: git show --format= --check HEAD

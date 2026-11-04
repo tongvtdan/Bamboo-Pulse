@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate this template repository without installing packages."""
+"""Validate Bamboo Pulse contributor documentation without installing packages."""
 
 from pathlib import Path
 import re
@@ -10,12 +10,14 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = (
     "AGENTS.md", "CODEX.md", "CLAUDE.md", "CHAT_NAMING.md", "PROJECT_STATE.md",
     "SHORTCUTS.md", "SPEC.md", "DESIGN.md", "WORKFLOW.md", "README.md",
-    "app/AGENTS.md", "docs/delivery/reusable-requests.md",
-    "docs/delivery/development-team.md", "examples/trail-log.md",
+    "Sources/AGENTS.md", "docs/delivery/reusable-requests.md",
+    "docs/delivery/development-team.md", "examples/preview.md",
     "karpathy-guidelines/SKILL.md", "karpathy-guidelines/references/examples.md",
     ".github/PULL_REQUEST_TEMPLATE.md", ".github/ISSUE_TEMPLATE/bug_report.md",
-    ".github/ISSUE_TEMPLATE/feature_request.md", ".github/workflows/ci.yml.example",
-    ".github/workflows/validate-template.yml", "scripts/validate_template.py",
+    ".github/ISSUE_TEMPLATE/feature_request.md", ".github/workflows/ci.yml",
+    ".github/workflows/validate-project.yml", "scripts/validate_project.py", "Package.swift", "BambooPulse.xcodeproj/project.pbxproj", "LICENSE",
+    "Runtime/pulse-runtime/package.py", "Runtime/pulse-runtime/build-review-dmg.sh",
+    "Runtime/status-service/codex-desktop-wrapper", "script/build_and_run.sh",
 )
 LINK = re.compile(r"!?\[[^\]]*\]\((<[^>]+>|[^\s)]+)(?:\s+[\"'][^\n]*?[\"'])?\)")
 PLACEHOLDER = re.compile(r"<[^<>\n]+>")
@@ -57,7 +59,7 @@ def anchors(text):
 
 def validate():
     errors = [f"missing required path: {name}" for name in REQUIRED if not (ROOT / name).is_file()]
-    docs = sorted(p for p in ROOT.rglob("*.md") if ".git" not in p.relative_to(ROOT).parts)
+    docs = sorted(p for p in ROOT.rglob("*.md") if not {".git", ".build", "DerivedData", "dist", ".swiftpm"}.intersection(p.relative_to(ROOT).parts))
     link_count = 0
     for path in docs:
         relative = path.relative_to(ROOT)
@@ -90,22 +92,10 @@ def validate():
         if PLACEHOLDER.search(unquoted):
             errors.append(f"{relative}: wrap prose placeholders in code spans so Markdown preserves them")
 
-    starter = ROOT / ".github/workflows/ci.yml.example"
-    workflow = ROOT / "WORKFLOW.md"
-    if starter.is_file() and workflow.is_file():
-        if "lint-test-build:" not in starter.read_text(encoding="utf-8"):
-            errors.append("CI starter: expected lint-test-build job")
-        for reference in (".github/workflows/ci.yml.example", ".github/workflows/ci.yml", "lint-test-build"):
-            if reference not in workflow.read_text(encoding="utf-8"):
-                errors.append(f"WORKFLOW.md: missing CI reference: {reference}")
-        readme = ROOT / "README.md"
-        if readme.is_file() and ".github/workflows/ci.yml.example" not in readme.read_text(encoding="utf-8"):
-            errors.append("README.md: missing CI starter reference")
-
     if errors:
         print("\n".join(f"ERROR: {error}" for error in errors), file=sys.stderr)
         return 1
-    print(f"PASS: {len(docs)} Markdown files, {link_count} local links/anchors, required paths, placeholders, and CI references.")
+    print(f"PASS: {len(docs)} Markdown files, {link_count} local links/anchors, required paths, and Markdown formatting.")
     return 0
 
 
