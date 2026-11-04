@@ -4,7 +4,7 @@ This file owns chat-title policy. [PROJECT_STATE.md](PROJECT_STATE.md) owns proj
 
 ## Project configuration
 
-Start with the project-state fields unresolved. Ask the owner to confirm a missing prefix once when supported naming tools and sufficient inventory are otherwise available. Save the answer and its source in project state. Never infer a prefix from a directory, repository, example, or product name.
+Use the confirmed state when available. Ask the owner to confirm a missing prefix once when supported naming tools and sufficient inventory are otherwise available. Save the answer and its source in project state. Never infer a prefix from a directory, repository, example, or product name.
 
 Each project owns one counter across platforms. Preserve a valid existing title and its assigned number.
 
@@ -33,18 +33,3 @@ Projectless chats use a concise descriptive title with no prefix or sequence.
 Use at least two digits; after 99 continue to 100 without wrapping. Retain existing larger numbers and reserved assignments. If safe allocation remains uncertain, skip naming and continue work.
 
 Do not read credentials, use private web APIs, or write app databases to obtain a title or inventory. Use a read-only local inventory helper only when explicitly configured and authorized for that environment; record its host/platform limits.
-
-## Fictional example
-
-The example owner has confirmed TL for the fictional Trail Log project. This is not a prefix assignment for a project created from this template.
-
-| Assignment | Environment | Meaning |
-| --- | --- | --- |
-| TL-X-01 \| Offline Checklist | Codex | First assigned task |
-| TL-C-02 \| Activation Experiment | ChatGPT Chat | Shared project counter |
-| TL-W-03 \| Export Acceptance | ChatGPT Work | Shared project counter |
-| TL-X-04 \| Restart Persistence | Codex | Next candidate after checking all recorded assignments |
-
-Renaming the first task after an authorized scope correction keeps 01. Discovering an archived TL-C-07 assignment makes 08 the next candidate even if 05 and 06 are absent from the available listing. The examples are not an inventory.
-
-See the [worked example](examples/trail-log.md#chat-naming-example) for confirmation and conflict cases.

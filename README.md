@@ -1,97 +1,48 @@
-# Project Agent Workflow Template
+# Bamboo Pulse
 
-Start a product project with shared instructions for coding agents, a small issue/PR workflow, and explicit evidence for completion.
+Bamboo Pulse is a macOS menu-bar app for following Codex Desktop sessions. See which sessions are working, which need a response, and which have ended. Select a live session to open its chat when the feed provides a valid destination.
 
-For a filled-in example, read [Trail Log](examples/trail-log.md), a fictional offline packing-checklist app. Product names, prefixes, issue numbers, metrics, and results there are illustrative; they are not live configuration.
+**Author** · [Dantino](https://dantino.vn) · [MIT license](LICENSE)
 
-## Start a new project
+## Try Preview
 
-1. Choose **Use this template** on the repository to create a new repo, or copy the files (including hidden .github files) into an existing project. For an existing repo, inspect overlapping files and merge instructions instead of overwriting them.
-2. Read the Trail Log example, then fill actual product, stack, ownership, commands, and non-goals in [AGENTS.md](AGENTS.md). Delete irrelevant sections.
-3. Fill [DESIGN.md](DESIGN.md) with the actual visual/interaction contract. It is a detailed reference; keep only what the MVP needs.
-4. Turn one outcome into an independently verifiable slice in [SPEC.md](SPEC.md).
-5. Configure [WORKFLOW.md](WORKFLOW.md) for the actual repository, default branch, board, and required checks. Its frontmatter is documentation, not an installed automation.
-6. Fill [PROJECT_STATE.md](PROJECT_STATE.md) from current evidence. Leave the prefix UNCONFIRMED until the owner confirms it under [CHAT_NAMING.md](CHAT_NAMING.md). Examples never assign a real prefix or sequence.
-7. Review [SHORTCUTS.md](SHORTCUTS.md) once. These aliases work through project instructions; they are not registered native slash commands.
-8. Adapt [app/AGENTS.md](app/AGENTS.md) only if the app folder has different placement or command rules. Rename/move it to the actual app root and correct its relative links; remove it when unnecessary.
-9. Configure the opt-in [.github/workflows/ci.yml.example](.github/workflows/ci.yml.example), then rename it to ci.yml. In WORKFLOW.md, set the documentation field `ci.enabled` to `true`; do not add an `enabled` key to the GitHub Actions YAML. Require the actual lint-test-build check and any project-specific gates; preserve existing protection/review requirements.
-10. Replace the template README with a product README when ready. Keep the fictional example as a reference or remove it and update its links.
-
-A template-generated repo copies files, not the original repo's issues, board configuration, branch protection, or external integrations. Configure and verify those in the new project.
-
-## What each file owns
-
-| File | Responsibility | Fictional Trail Log example |
-| --- | --- | --- |
-| [AGENTS.md](AGENTS.md) | Product contract, architecture boundaries, actual commands | Preserve offline checklist saves |
-| [CODEX.md](CODEX.md) / [CLAUDE.md](CLAUDE.md) | Thin tool orientation pointing to shared rules | Same save contract in every coding client |
-| [SHORTCUTS.md](SHORTCUTS.md) | Aliases, operation permissions, MODE perspectives | /Investigate a restart loss; /Fix the specified cause |
-| [CHAT_NAMING.md](CHAT_NAMING.md) | Confirmed prefix, environment marker, shared counter policy | TL-X-01, TL-C-02, TL-W-03 |
-| [PROJECT_STATE.md](PROJECT_STATE.md) | Identity/confirmation, assignments, task/evidence/resume | Save failure is PENDING until checked |
-| [DESIGN.md](DESIGN.md) | UI, tokens, states, copy, accessibility | Visible saving/saved/failed-save states |
-| [SPEC.md](SPEC.md) | Scope, acceptance, issue-sized work | Preserve packed flags across restart |
-| [WORKFLOW.md](WORKFLOW.md) | Issue/branch/PR/review/release loop | Review evidence before closing the issue |
-| [Request library](docs/delivery/reusable-requests.md) | Reusable outcome/scope/failure/evidence requests | Verify failed-save and retry behavior |
-| [Development guide](docs/delivery/development-team.md) | One writer, review, ownership transfer | Separate implementation from assigned QA |
-| [Guardrails](karpathy-guidelines/SKILL.md) | Simple changes, explicit assumptions, verified outcomes | Reject blank items at the owning boundary |
-| [.github/ISSUE_TEMPLATE/feature_request.md](.github/ISSUE_TEMPLATE/feature_request.md) | Feature issue body | Outcome, non-goals, failure acceptance |
-| [.github/ISSUE_TEMPLATE/bug_report.md](.github/ISSUE_TEMPLATE/bug_report.md) | Bug issue body | Reproducer and regression evidence |
-| [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) | PR description | Actual commands and remaining gaps |
-
-Keep one source per policy. Adapters link to canonical docs instead of copying them. Flag conflicts before acting; do not silently weaken a contract.
-
-## Naming and alias behavior
-
-Names use `<PREFIX>-<PLATFORM>-<NN> | <Task or Subsystem>`. X is Codex, C is ChatGPT Chat, W is ChatGPT Work. A project has one counter across those environments. Confirm a prefix once, inspect available inventories/archives/linked assignments, preserve existing numbers, and verify a native saved title before claiming success.
-
-Without supported tools or sufficient identity/numbering evidence, continue the substantive task silently. A heading is not a title change.
-
-Read-only aliases inspect and explain. /Build and /Fix authorize scoped implementation; /Addtests requests scoped tests; /Release assesses readiness; /Team proposes coordination. External writes, spawning agents, messages, commits, pushes, merges, deployment, and spending require authority from the actual task or project policy.
-
-## GitHub Project setup
-
-Use a user- or organization-owned Project. Reuse an existing board when appropriate; linking it does not automatically add all issues.
-
-Example shell commands below require replacing every angle-bracket placeholder before use:
+Use a Mac with Xcode and a Swift 6 toolchain. The app targets macOS 14 or later. From a clone of this repository, run the following command and click the Bamboo Pulse icon in the menu bar.
 
 ```sh
-gh auth login
-gh project create --owner <owner> --title "<Project Name> - <initiative>"
-gh project link <project-number> --owner <owner> --repo <owner>/<repo>
-gh project field-list <project-number> --owner <owner>
+./script/build_and_run.sh --preview
 ```
 
-Inspect the existing Status field first. Configure its options in the UI instead of creating a duplicate. Suggested states: Backlog, Ready, In Progress, In Review, Done, Parked. Record the chosen field/label authority in WORKFLOW.md.
+Preview shows labeled sample sessions. It needs no monitoring setup or developer signing identity. To debug in Xcode, open `BambooPulse.xcodeproj`, select **Bamboo Pulse Preview**, and run. The Swift package builds the core library only.
 
-User board URLs follow `https://github.com/users/<owner>/projects/<number>`; organization board URLs follow `https://github.com/orgs/<owner>/projects/<number>`. Save the verified URL in project configuration. New boards, issues, and status changes still require task authority.
+## Live monitoring
 
-## Before first implementation
+The Live scheme reads a compatible local feed. A plain Xcode build does not bundle the monitoring runtime. Without a feed, Live reports its unavailable state. A packaged app can offer optional setup for Codex Desktop observation. Enabling it changes the current user's shell profile and Codex hooks. Review setup, removal and recovery before testing on an account you use.
 
-- Fill product/architecture/command placeholders; leave unverified claims explicitly pending.
-- Confirm aliases and tool adapters agree about permissions and human review.
-- Confirm naming examples are not live assignments.
-- Make the actual app folder, paths, links, and commands match the repo.
-- Configure/verify CI before requiring its job; retain existing security gates.
-- Define one user outcome with normal, boundary, and failure acceptance.
-- Record actual evidence rather than copying sample results.
-
-Useful placeholder scan:
+## Develop
 
 ```sh
-rg -n '<[^>]+>|TODO|TBD|FIXME|ISSUE_NUMBER' AGENTS.md PROJECT_STATE.md SPEC.md WORKFLOW.md DESIGN.md app .github
-git diff --check
+swift test
+./script/build_and_run.sh --preview --test
+./script/build_and_run.sh --live --test
+./script/build_and_run.sh --release --build-only
 ```
 
-A placeholder scan helps setup; it is not a complete validation or evidence that the app works. Sample app commands are intentionally not runnable in this docs-only repository.
+Start with [contributor workflow](WORKFLOW.md) for checks and [behavior and architecture](SPEC.md) for source ownership. Report a bug with your macOS version, the scheme and a minimal reproduction using sample data. Keep chat contents and local session identifiers out of public reports.
 
-## Validate the template
+## Work on the monitoring runtime
 
-Run the template-maintenance checks without installing dependencies:
+[Runtime](Runtime/) contains the Python monitor, local feed, setup and packaging sources. Use Python 3.10 or newer to run the packager. The packaging command supports Apple silicon and verifies the SHA-256 of the full CPython 3.11.15 archive before using it. Download the archive once and set `PULSE_PYTHON_ARCHIVE` to its absolute path. See [dependency versions and notices](docs/dependencies.md).
+
+To stage a disposable payload, use a new output path. The packaged test suite uses temporary homes and sockets. The observer and its desktop-forwarding test currently expect the Codex CLI bundled inside `/Applications/ChatGPT.app`. Opening a chat also requires the registered Codex app. Preview and the native fixture tests work without those desktop integrations.
 
 ```sh
-python3 scripts/validate_template.py
+export PULSE_TEST_PAYLOAD="$(mktemp -d)/PulseRuntime"
+python3 Runtime/pulse-runtime/package.py --python-archive "$PULSE_PYTHON_ARCHIVE" --output "$PULSE_TEST_PAYLOAD"
+python3 -B -m unittest discover -s Runtime/pulse-runtime/tests
 ```
 
-The active `validate-template.yml` workflow runs this command for pull requests and pushes to main. It checks required template files, relative links/heading anchors, visible placeholders, whitespace, and CI starter references. The app CI starter remains opt-in.
+For a local unsigned image, run the following with a new output filename. A public download requires the separate [release checks](docs/release-checks.md).
 
-When adopting the kit for a product, remove or adapt this maintenance script and its workflow together before deleting template-only files. Configure the product's own app checks separately; template validation is not an application test.
+```sh
+Runtime/pulse-runtime/build-review-dmg.sh "$PULSE_PYTHON_ARCHIVE" "$PWD/Bamboo-Pulse-review.dmg"
+```
