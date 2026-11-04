@@ -31,7 +31,7 @@ Start with [contributor workflow](WORKFLOW.md) for checks and [behavior and arch
 
 ## Work on the monitoring runtime
 
-[Runtime](Runtime/) contains the Python monitor, local feed, setup and packaging sources. The packaging command supports Apple silicon and verifies the SHA-256 of the full CPython 3.11.15 archive before using it. Download the archive once and set `PULSE_PYTHON_ARCHIVE` to its absolute path. See [dependency versions and notices](docs/dependencies.md).
+[Runtime](Runtime/) contains the Python monitor, local feed, setup and packaging sources. Use Python 3.10 or newer to run the packager. The packaging command supports Apple silicon and verifies the SHA-256 of the full CPython 3.11.15 archive before using it. Download the archive once and set `PULSE_PYTHON_ARCHIVE` to its absolute path. See [dependency versions and notices](docs/dependencies.md).
 
 To stage a disposable payload, use a new output path. The packaged test suite uses temporary homes and sockets. The observer and its desktop-forwarding test currently expect the Codex CLI bundled inside `/Applications/ChatGPT.app`. Opening a chat also requires the registered Codex app. Preview and the native fixture tests work without those desktop integrations.
 

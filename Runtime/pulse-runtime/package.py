@@ -48,6 +48,9 @@ def stage(destination, python, notices):
         shutil.copytree(python, destination / 'python', symlinks=True,
                         ignore=shutil.ignore_patterns('__pycache__', '*.pyc', 'site-packages', 'test', 'tests'))
         shutil.copytree(notices, destination / 'licenses' / 'python-distribution')
+        # The pinned distribution declares this notice but omits it from its archive.
+        shutil.copy2(ROOT / 'notices/LICENSE.zlib-ng.txt',
+                     destination / 'licenses/python-distribution/LICENSE.zlib-ng.txt')
         shutil.copy2(ROOT.parent / 'LICENSE', destination / 'licenses' / 'Bamboo-Pulse.txt')
         target = destination / 'status-service'
         target.mkdir()
