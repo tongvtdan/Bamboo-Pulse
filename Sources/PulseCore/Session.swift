@@ -12,7 +12,8 @@ public struct Session: Identifiable, Sendable, Equatable {
     public internal(set) var observationContinuity: UInt64? = nil
 
     public var title: String { name ?? "Name unavailable" }
-    public var provider: String { "Codex" }
+    public var isGemini: Bool { id.hasPrefix("gemini:") }
+    public var provider: String { isGemini ? "Gemini" : "Codex" }
 
     public func displaying(_ state: SessionState) -> Session {
         Session(id: id, alias: alias, name: name, state: state, ageMS: ageMS, remainingMS: remainingMS,

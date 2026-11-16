@@ -1,6 +1,6 @@
 import Foundation
 
-public enum SessionState: String, Sendable, CaseIterable {
+public enum SessionState: String, Sendable, CaseIterable, Codable {
     case unknown = "UNKNOWN"
     case working = "WORKING"
     case needsAttention = "NEEDS_ATTENTION"

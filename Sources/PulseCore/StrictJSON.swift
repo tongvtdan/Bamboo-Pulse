@@ -3,8 +3,8 @@ import Foundation
 /// Foundation validates JSON grammar; this second pass rejects ambiguous duplicate keys
 /// (including escaped equivalents) and excessive nesting before schema validation.
 enum StrictJSON {
-    static func object(_ data: Data) throws -> Any {
-        guard data.count <= 131072 else { throw FeedError.invalidData }
+    static func object(_ data: Data, byteLimit: Int = 131072) throws -> Any {
+        guard data.count <= byteLimit else { throw FeedError.invalidData }
         let value = try JSONSerialization.jsonObject(with: data)
         var scanner = KeyScanner(bytes: Array(data))
         try scanner.value(depth: 0)

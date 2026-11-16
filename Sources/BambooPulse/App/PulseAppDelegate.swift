@@ -13,6 +13,7 @@ final class PulseAppDelegate: NSObject, NSApplicationDelegate {
     private var menuBar: MenuBarController?
     private var attention: NeedsYouNotifications?
     private var configuring = false
+    private var geminiSocket: GeminiHookSocket?
     private var observerProcess: Process?
     private let runtime = Bundle.main.url(forResource: "PulseRuntime", withExtension: nil)
     private let source = MonitoringSource.selected()
@@ -35,7 +36,14 @@ final class PulseAppDelegate: NSObject, NSApplicationDelegate {
         if !store.isSynthetic { UNUserNotificationCenter.current().delegate = attention }
         let packaged = runtime != nil && !store.isSynthetic && source == .standalone
         let feed = packaged ? CoordinatorFeed(path: "/tmp/bamboo-pulse-\(getuid())/feed.sock") : CoordinatorFeed()
-        driver = MonitorDriver(store: store, feed: feed, onUpdate: { [weak attention] in attention?.update() })
+        if !store.isSynthetic { geminiSocket = GeminiHookSocket() }
+        driver = MonitorDriver(store: store, feed: feed, onUpdate: { [weak self, weak attention] in
+            var requests: [String] = []
+            if let self, let socket = self.geminiSocket {
+                requests = self.store.updateGemini(socket.drain(), at: .now)
+            }
+            attention?.update(geminiRequests: requests)
+        })
         let navigation = SessionNavigationController(lookup: { try await feed.chatThreadID(for: $0) })
         self.navigation = navigation
         settings = SettingsWindowController(store: store, preferences: preferences, attention: attention,
@@ -44,7 +52,8 @@ final class PulseAppDelegate: NSObject, NSApplicationDelegate {
                 if self.source == .existing { self.manageExistingMonitoring() }
                 else { Task { await self.configureMonitoring(manage: true) } }
             } : nil,
-            usesExistingMonitoring: source == .existing)
+            usesExistingMonitoring: source == .existing,
+            manageGemini: store.isSynthetic ? nil : { [weak self] in self?.manageGemini() })
         menuBar = MenuBarController(store: store, preferences: preferences, navigation: navigation, attention: attention) { [weak self] in
             self?.settings?.present()
         }
@@ -180,8 +189,59 @@ final class PulseAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func willSleep() { driver?.stop() }
-    @objc private func didWake() { driver?.start() }
+    private func manageGemini() {
+        guard geminiSocket != nil, let binary = Bundle.main.executableURL else {
+            let alert = NSAlert()
+            alert.messageText = "Gemini observer unavailable"
+            alert.informativeText = "Close any other live copy of Pulse and reopen this one."
+            alert.runModal()
+            return
+        }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Select workspace"
+        panel.message = "Choose the Antigravity IDE workspace whose Gemini turns you want to monitor."
+        guard panel.runModal() == .OK, let workspace = panel.url else { return }
+        do {
+            let config = try GeminiWorkspaceHooks(workspace: workspace, executable: binary)
+            let action = NSAlert()
+            switch try config.status() {
+            case .available:
+                action.messageText = "Enable Gemini monitoring for " + workspace.lastPathComponent + "?"
+                action.informativeText = "Pulse will create .agents/hooks.json here. Hooks send a local chat identifier and activity state to Pulse. Prompts and replies are discarded. Keep Pulse at its current location."
+                action.addButton(withTitle: "Enable")
+                action.addButton(withTitle: "Cancel")
+                if action.runModal() == .alertFirstButtonReturn { try config.install() }
+            case .installed:
+                action.messageText = "Remove this workspace’s Pulse hooks?"
+                action.informativeText = "Pulse created this hooks file and verified its contents."
+                action.addButton(withTitle: "Cancel")
+                action.addButton(withTitle: "Remove")
+                if action.runModal() == .alertSecondButtonReturn { try config.remove() }
+            case .occupied:
+                action.messageText = "This workspace has an existing hooks file"
+                action.informativeText = "You can copy the Pulse hook group and merge it into .agents/hooks.json yourself. Remove just that group to disconnect."
+                action.addButton(withTitle: "Done")
+                action.addButton(withTitle: "Copy hook JSON")
+                if action.runModal() == .alertSecondButtonReturn {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(String(decoding: config.contents, as: UTF8.self), forType: .string)
+                }
+            }
+        } catch { NSAlert(error: error).runModal() }
+    }
+
+    @objc private func willSleep() {
+        driver?.stop()
+        geminiSocket = nil
+        store.resetGemini()
+    }
+    @objc private func didWake() {
+        if !store.isSynthetic { geminiSocket = GeminiHookSocket() }
+        driver?.start()
+    }
 
     func applicationDidBecomeActive(_ notification: Notification) {
         Task { @MainActor [weak attention] in await attention?.refreshAuthorization() }

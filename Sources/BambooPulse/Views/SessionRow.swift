@@ -26,9 +26,9 @@ struct SessionRow: View {
                 .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(isFocused ? Color.accentColor : .clear, lineWidth: 1.5) }
         }
         .buttonStyle(.plain)
-        .disabled(isSynthetic)
+        .disabled(isSynthetic || session.isGemini)
         .onKeyPress(.return) {
-            guard !isSynthetic else { return .ignored }
+            guard !isSynthetic, !session.isGemini else { return .ignored }
             activate()
             return .handled
         }
@@ -38,6 +38,7 @@ struct SessionRow: View {
 
     private var actionHint: String {
         if isSynthetic { return "Sample session. Opening a real chat is unavailable." }
+        if session.isGemini { return "Continue in the originating Gemini session." }
         return "Open this chat in Codex"
     }
 
@@ -54,12 +55,15 @@ struct SessionRow: View {
     private func statusSuffix(at time: MonitorTime) -> String {
         guard showStatus else { return "" }
         var suffix = " · \(session.state.label)"
-        if let duration = session.statusTiming?.label(at: time) { suffix += " · \(duration)" }
+        if let duration = session.statusTiming?.label(at: time) {
+            suffix += session.isGemini ? " · observed " + duration + " ago" : " · " + duration
+        }
         return suffix
     }
 
     private func timingHint(at time: MonitorTime) -> String {
         guard showStatus, let timing = session.statusTiming, let duration = timing.label(at: time) else { return "" }
+        if session.isGemini { return "Last observed " + duration + " ago. " }
         return "Continuously observed for \(duration). "
             + (timing.isLowerBound ? "The actual status may have started earlier. " : "Measured from the observed status change. ")
     }

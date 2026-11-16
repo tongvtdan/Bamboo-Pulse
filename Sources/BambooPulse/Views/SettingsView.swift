@@ -8,6 +8,7 @@ struct SettingsView: View {
 
     var manageSetup: (() -> Void)? = nil
     var usesExistingMonitoring = false
+    var manageGemini: (() -> Void)? = nil
 
     var body: some View {
         let status = MonitoringStatus(store: store)
@@ -53,6 +54,7 @@ struct SettingsView: View {
                     Text("Using existing local monitoring.").foregroundStyle(.secondary)
                 }
                 if let manageSetup { Button("Manage monitoring…", action: manageSetup) }
+                if let manageGemini { Button("Gemini in Antigravity IDE…", action: manageGemini) }
                 LabeledContent(status.headline, value: status.inventory)
                 if let recovery = status.recovery {
                     Text(status.detail).foregroundStyle(.secondary)

@@ -8,10 +8,10 @@ struct MonitoringStatus {
     let recovery: String?
     let showsPopoverGuidance: Bool
 
-    let coverage = "Pulse shows supported Codex sessions on this Mac."
+    let coverage = "Pulse shows supported Codex sessions and Gemini activity from configured Gemini CLI and Antigravity IDE workspaces."
 
     @MainActor init(store: MonitorStore) {
-        showsPopoverGuidance = store.isSynthetic || store.health != .monitoring || store.sessions.isEmpty
+        showsPopoverGuidance = store.isSynthetic || store.displayHealth != .monitoring || store.sessions.isEmpty
 
         if store.isSynthetic {
             headline = "Demo mode"
@@ -21,9 +21,9 @@ struct MonitoringStatus {
             return
         }
 
-        if store.health == .monitoring {
+        if store.displayHealth == .monitoring {
             inventory = "\(store.sessions.count) \(store.sessions.count == 1 ? "session" : "sessions") observed"
-            headline = store.sessions.isEmpty ? "No sessions observed" : "Connected"
+            headline = store.health != .monitoring ? "Codex feed unavailable" : (store.sessions.isEmpty ? "No sessions observed" : "Connected")
             detail = store.sessions.isEmpty
                 ? "No Codex sessions are being reported to Pulse right now."
                 : "Pulse can’t determine the current status of sessions marked Unknown."

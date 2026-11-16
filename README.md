@@ -6,6 +6,10 @@ Bamboo Pulse is a macOS menu-bar app for following local Codex chats. See which 
 
 
 
+Gemini CLI can show tool-permission requests and turn endings in source builds. [Configure Gemini CLI workspace hooks](docs/gemini-cli.md).
+
+Gemini activity in Antigravity IDE is available in source builds through workspace hooks. [Gemini setup and supported states](docs/gemini-monitoring.md).
+
 ## Read the bamboo
 
 In **Normal** layout, each session has a bamboo stalk with three sections. The colored section and underline identify its current state.

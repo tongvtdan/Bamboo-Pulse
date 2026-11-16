@@ -16,7 +16,7 @@ final class SessionNavigationController {
     }
 
     func activate(_ session: Session, synthetic: Bool) {
-        guard !synthetic else { return }
+        guard !synthetic, !session.isGemini else { return }
         Task { [weak self] in
             do { try await self?.openChat(for: session.id, synthetic: synthetic) }
             catch { self?.presentError(error is SessionLinkError ? error.localizedDescription : SessionLinkError.unavailable.localizedDescription) }
