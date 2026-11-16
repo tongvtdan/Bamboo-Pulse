@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-11-16T09:12:49.616357+07:00",
+  "result": "PASS",
+  "gemini_cli": "0.62.0",
+  "installed_executable_sha256": "13c5a3c8759d54b8925f650a309983cd391771261b4134c20daec0b92eeaa7ec",
+  "workspace_settings_sha256": "dcba4d089f11fb8808c0d98ce7ef7e4974b27c5ed05a84cba0d56110da7f2d01",
+  "method": "Actual BambooX hook definitions copied into disposable Gemini CLI workspace alongside independent event-recording hooks. Actual installed app handled the direct hook commands.",
+  "checks": [
+    "Loaded actual BambooX hook definitions into disposable CLI workspace",
+    "PASS no Gemini banner before test",
+    "PASS real CLI emitted initial AfterAgent",
+    "PASS real CLI permission UI and Notification event",
+    "PASS Gemini banner visible before confirmation",
+    "PASS Gemini banner absent after turn end",
+    "PASS disposable file created and subsequent AfterAgent observed"
+  ],
+  "privacy": "Disposable home, local model fixture and synthetic file. No Google account or real project write.",
+  "limits": [
+    "Banner presence before approval and absence after turn end were checked via macOS accessibility. Exact banner count unmeasured.",
+    "A live Google model session was not exercised."
+  ],
+  "review": "same-agent test execution"
+}

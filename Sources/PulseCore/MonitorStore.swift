@@ -3,7 +3,70 @@ import Observation
 
 @MainActor @Observable
 public final class MonitorStore {
-    public private(set) var sessions: [Session] = []
+    private var codexSessions: [Session] = []
+    private var geminiSessions: [Session] = []
+    @ObservationIgnored private var geminiEvents: [String: GeminiHook] = [:]
+    @ObservationIgnored private var latestGeminiClock: MonitorTime?
+    @ObservationIgnored private var nextGeminiChange = Double.infinity
+    public var sessions: [Session] { codexSessions + geminiSessions }
+    public var displayHealth: FeedHealth { geminiSessions.isEmpty ? health : .monitoring }
+
+    @discardableResult public func updateGemini(_ incoming: [GeminiHook], at time: MonitorTime) -> [String] {
+        guard !isSynthetic else { return [] }
+        if let previous = latestGeminiClock, time.wallMS < previous.wallMS ||
+            abs((time.wallMS - previous.wallMS) - (time.continuousMS - previous.continuousMS)) > 2500 {
+            resetGemini()
+        }
+        latestGeminiClock = time
+        guard !incoming.isEmpty || time.wallMS >= nextGeminiChange else { return [] }
+        var requests = Set<String>()
+        geminiEvents = geminiEvents.filter { (0..<120000).contains(time.wallMS - $0.value.observed) }
+        for event in incoming {
+            let age = time.wallMS - event.observed
+            let previous = geminiEvents[event.id]
+            guard event.valid, (0..<2500).contains(age),
+                  event.observed > 0, event.observed >= (previous?.observed ?? 0),
+                  previous != nil || geminiEvents.count < 128 else { continue }
+            if let previous, event.observed == previous.observed {
+                // Equal-time observations cannot resolve conflicting states or destinations.
+                if event.state != previous.state || event.destination != previous.destination {
+                    geminiEvents[event.id] = GeminiHook(id: event.id, state: .unknown, observed: event.observed)
+                }
+                continue
+            }
+            if event.state != .unknown || previous != nil {
+                if event.state == .needsAttention {
+                    requests.insert("gemini:" + event.id)
+                }
+                geminiEvents[event.id] = event
+            }
+        }
+        nextGeminiChange = .infinity
+        let rows = geminiEvents.values.sorted { $0.id < $1.id }.map { event in
+            let age = time.wallMS - event.observed
+            let cli = event.id.hasPrefix("cli-")
+            let alias = String((cli ? event.id.dropFirst(4) : event.id[...]).prefix(8))
+            let fresh = age < 30000 && event.state != .unknown
+            nextGeminiChange = min(nextGeminiChange, event.observed + (fresh ? 30000 : 120000))
+            let timing = fresh ? StatusTiming(startedContinuousMS: time.continuousMS - age,
+                                              validUntilContinuousMS: time.continuousMS - age + 30000,
+                                              isLowerBound: false) : nil
+            return Session(id: "gemini:" + event.id, alias: alias, name: (cli ? "Gemini CLI " : "Gemini chat ") + alias,
+                           state: fresh ? event.state : .unknown, ageMS: age,
+                           remainingMS: max(0, 30000 - age), statusTiming: timing,
+                           observationContinuity: cli && fresh ? event.observed.bitPattern : nil,
+                           geminiDestination: fresh ? event.destination : nil)
+        }
+        if rows != geminiSessions { geminiSessions = rows }
+        return rows.filter { requests.contains($0.id) && $0.state == .needsAttention }.map(\.id)
+    }
+
+    public func resetGemini() {
+        geminiEvents.removeAll()
+        geminiSessions = []
+        latestGeminiClock = nil
+        nextGeminiChange = .infinity
+    }
     public private(set) var health: FeedHealth
     public let isSynthetic: Bool
     public private(set) var epoch: UInt64 = 0
@@ -21,7 +84,7 @@ public final class MonitorStore {
         isSynthetic = synthetic
         health = synthetic ? .synthetic : .connecting
         if synthetic {
-            sessions = [
+            codexSessions = [
                 Session(id: "sample-1", alias: "CX1", name: "Configuration", state: .needsAttention, ageMS: 0, remainingMS: 0),
                 Session(id: "sample-2", alias: "CX2", name: "Build", state: .working, ageMS: 0, remainingMS: 0),
                 Session(id: "sample-3", alias: "CX3", name: "Documentation", state: .turnEnded, ageMS: 0, remainingMS: 0),
@@ -34,7 +97,7 @@ public final class MonitorStore {
     public var observationGeneration: String? { generation }
     public var workingCount: Int { sessions.filter { $0.state == .working }.count }
     public var summary: String {
-        if health != .monitoring && health != .synthetic { return "Status unknown" }
+        if displayHealth != .monitoring && displayHealth != .synthetic { return "Status unknown" }
         if sessions.isEmpty { return "No sessions observed" }
         return "\(attentionCount) needs you · \(workingCount) working"
     }
@@ -60,7 +123,7 @@ public final class MonitorStore {
             if let old = generation, old != next.generation {
                 guard retired.count < 32 else { throw FeedError.outOfOrder }
                 retired.insert(old)
-                sessions = sessions.map { row in
+                codexSessions = codexSessions.map { row in
                     var baseline = row
                     baseline.statusTiming = nil
                     baseline.observationContinuity = nil
@@ -78,7 +141,7 @@ public final class MonitorStore {
                 health = .monitoring
                 refresh(at: time)
             } else {
-                sessions = []
+                codexSessions = []
                 fail(.unavailable)
             }
         } catch FeedError.stale { fail(.stale) }
@@ -90,7 +153,7 @@ public final class MonitorStore {
         health = reason
         packet = nil
         receipt = nil
-        sessions = sessions.map { $0.displaying(.unknown) }
+        codexSessions = codexSessions.map { $0.displaying(.unknown) }
     }
 
     public func refresh(at time: MonitorTime) {
@@ -100,8 +163,8 @@ public final class MonitorStore {
         ageFloor = max(ageFloor, time.wallMS - source.timestampMS,
                        time.continuousMS - receipt.continuousMS + receipt.wallMS - source.timestampMS)
         guard ageFloor < source.validForMS else { fail(.stale); return }
-        let previous = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0) })
-        sessions = source.sessions.map { row in
+        let previous = Dictionary(uniqueKeysWithValues: codexSessions.map { ($0.id, $0) })
+        codexSessions = source.sessions.map { row in
             var displayed = row.displaying(ageFloor < row.remainingMS ? row.state : .unknown)
             guard displayed.state != .unknown else { return displayed }
             let prior = previous[row.id]

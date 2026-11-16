@@ -70,7 +70,7 @@ final class MenuBarController: NSObject {
     private func updateLabel() {
         guard !stopped else { return }
         withObservationTracking {
-            let summary = MenuBarSummary(states: store.sessions.map(\.state), health: store.health, isSynthetic: store.isSynthetic)
+            let summary = MenuBarSummary(states: store.sessions.map(\.state), health: store.displayHealth, isSynthetic: store.isSynthetic)
             guard summary != displayedSummary else { return }
             displayedSummary = summary
             button.attributedTitle = MenuBarTitle.attributedString(for: summary)

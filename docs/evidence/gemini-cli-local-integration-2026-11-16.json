@@ -1,0 +1,52 @@
+{
+  "approval": {
+    "chat": "BBX-X-87 | Gemini CLI Support",
+    "decision": "Approve for local integration",
+    "reviewer": "Dan",
+    "workspace_hooks": "BambooX \u2014 current project"
+  },
+  "base_commit": "656120e34b2bdd4602f884d03f2aa80203115b9b",
+  "branch": "develop",
+  "build": "Release, bundled pinned runtime, Developer ID Application: Dan Tong (4QNWF9XX55)",
+  "date": "2026-11-16",
+  "disk_image": "/private/tmp/pulse-gemini-live.W331hA/Bamboo-Pulse-Gemini-local.dmg",
+  "disk_image_sha256": "cf331e36836d0ad6e46781418c1435a93390ee13f61eb95f8f90bf1d206ac976",
+  "executable_sha256": "13c5a3c8759d54b8925f650a309983cd391771261b4134c20daec0b92eeaa7ec",
+  "installation": "/Applications/Bamboo Pulse.app",
+  "installed_checks": [
+    "codesign --verify --deep --strict passed",
+    "runtime manifest hashes passed",
+    "monitoring.source remains existing",
+    "app process running",
+    "both BambooX hook commands returned neutral JSON for invalid input"
+  ],
+  "limits": [
+    "Actual Gemini CLI 0.62.0 exercised with a local model fixture, synthetic home and workspace.",
+    "Banner presence and removal verified. Exact banner count unmeasured.",
+    "Source remains an uncommitted working tree. Public release and clean-Mac qualification remain pending.",
+    "Gemini CLI was installed in the disposable test directory. User sessions require a hook-capable CLI."
+  ],
+  "result": "PASS",
+  "rollback_app": "/private/tmp/pulse-gemini-live.W331hA/previous-installed/Bamboo Pulse.app",
+  "runtime_files_verified": 1324,
+  "runtime_manifest_sha256": "a981bfe835b1b54f3a6e2f4c8ad8cec6e1b71150d8334e68582fd4b1e654537a",
+  "source_drift": false,
+  "source_manifest_reference": "gemini-cli-fixed-live-2026-11-16.json",
+  "tests": {
+    "installed_live_checks": [
+      "PASS real CLI AfterAgent and Pulse hook response",
+      "PASS real tool permission UI and Pulse hook response",
+      "PASS Gemini banner visible before confirmation",
+      "PASS Gemini banner absent after turn end",
+      "PASS disposable file created and subsequent AfterAgent observed",
+      "PASS existing Codex feed available, sessions 1",
+      "PASS approved packaged app installed and running",
+      "Rollback app: /private/tmp/pulse-gemini-live.W331hA/previous-installed/Bamboo Pulse.app"
+    ],
+    "packaged_runtime": 17,
+    "runtime_regressions": 7
+  },
+  "timezone": "Asia/Saigon",
+  "workspace_settings": "/Volumes/Work/Projects/BambooX/.gemini/settings.json",
+  "workspace_settings_sha256": "dcba4d089f11fb8808c0d98ce7ef7e4974b27c5ed05a84cba0d56110da7f2d01"
+}

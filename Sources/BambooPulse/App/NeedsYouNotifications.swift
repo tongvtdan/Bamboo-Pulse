@@ -5,7 +5,7 @@ import PulseCore
 import UserNotifications
 
 enum AttentionAuthorization: Sendable { case notDetermined, allowed, denied, alertsDisabled }
-enum AttentionNotificationKind { case needsYou, test }
+enum AttentionNotificationKind { case needsYou, geminiPermission, test }
 
 @MainActor
 protocol AttentionNotificationCenter: AnyObject {
@@ -56,7 +56,11 @@ final class NativeAttentionNotificationCenter: AttentionNotificationCenter {
     func add(identifier: String, kind: AttentionNotificationKind) async throws {
         let content = UNMutableNotificationContent()
         content.title = kind == .test ? "Pulse notification test" : "Needs you"
-        content.body = kind == .test ? "Click this notification to open Pulse." : "An observed session needs your attention. Open Pulse to check."
+        switch kind {
+        case .test: content.body = "Click this notification to open Pulse."
+        case .needsYou: content.body = "An observed session needs your attention. Open Pulse to check."
+        case .geminiPermission: content.body = "Gemini CLI requested tool permission. Review the request in your terminal."
+        }
         content.threadIdentifier = "bamboo-pulse.attention"
         logger.info("Submitting local notification; test=\(kind == .test, privacy: .public)")
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
@@ -201,7 +205,7 @@ final class NeedsYouNotifications: NSObject, UNUserNotificationCenterDelegate {
         update()
     }
 
-    func update() {
+    func update(geminiRequests: [String] = []) {
         guard !stopped else { return }
         checkPermissionIfDue()
         if let identifier = testIdentifier, !isCurrent(identifier) {
@@ -212,9 +216,9 @@ final class NeedsYouNotifications: NSObject, UNUserNotificationCenterDelegate {
         let stale = active.keys.filter { !isCurrent($0) }
         if !stale.isEmpty { center.remove(identifiers: stale) }
         for id in stale { active.removeValue(forKey: id) }
-        let sessions = policy.update(sessions: store.sessions, health: store.health,
+        let sessions = policy.update(sessions: store.sessions.filter { !$0.isGemini }, health: store.health,
             generation: store.observationGeneration, epoch: store.epoch, enabled: enabled, synthetic: store.isSynthetic)
-        for sessionID in sessions {
+        for sessionID in sessions + (enabled ? geminiRequests : []) {
             guard let continuity = store.sessions.first(where: { $0.id == sessionID })?.observationContinuity else { continue }
             let identifier = NativeAttentionNotificationCenter.prefix + UUID().uuidString
             active[identifier] = Episode(sessionID: sessionID, generation: store.observationGeneration,
@@ -265,10 +269,15 @@ final class NeedsYouNotifications: NSObject, UNUserNotificationCenterDelegate {
         if identifier == testIdentifier {
             return ready && !stopped && !store.isSynthetic && isEnabled && !isRequestingPermission && authorization == .allowed
         }
-        store.refresh(at: clock())
+        let now = clock()
+        store.refresh(at: now)
         guard ready, !stopped, !store.isSynthetic, isEnabled, !isRequestingPermission, authorization == .allowed,
-              store.health == .monitoring, let episode = active[identifier], episode.epoch == store.epoch,
-              episode.generation == store.observationGeneration else { return false }
+              let episode = active[identifier], episode.epoch == store.epoch else { return false }
+        if episode.sessionID.hasPrefix("gemini:cli-") {
+            store.updateGemini([], at: now)
+        } else if store.health != .monitoring || episode.generation != store.observationGeneration {
+            return false
+        }
         return store.sessions.contains {
             $0.id == episode.sessionID && $0.state == .needsAttention && $0.observationContinuity == episode.continuity
         }
@@ -284,7 +293,8 @@ final class NeedsYouNotifications: NSObject, UNUserNotificationCenterDelegate {
             return
         }
         do {
-            try await center.add(identifier: identifier, kind: .needsYou)
+            let gemini = active[identifier]?.sessionID.hasPrefix("gemini:cli-") == true
+            try await center.add(identifier: identifier, kind: gemini ? .geminiPermission : .needsYou)
             if !isCurrent(identifier) { center.remove(identifiers: [identifier]) }
             else { deliveryFailed = false }
         } catch {

@@ -68,6 +68,30 @@ struct NeedsYouNotificationsTests {
         #expect(!defaults.bool(forKey: "attention.notifyNeedsYou"))
     }
 
+    @Test(arguments: [false, true]) func cliRequestClearsOnTurnEndOrConflictingEvidence(tied: Bool) async throws {
+        let (store, notifications, center, _) = make()
+        await notifications.start()
+        await notifications.setEnabled(true)
+        func observe(_ event: String, stamp: String) throws {
+            let payload = try JSONSerialization.data(withJSONObject: [
+                "session_id": "00000000-0000-4000-8000-000000000001", "hook_event_name": event,
+                "notification_type": "ToolPermission", "timestamp": stamp])
+            let hook = try #require(GeminiHook.projectCLI(payload, event: event))
+            notifications.update(geminiRequests: store.updateGemini([hook], at: time()))
+        }
+        try observe("Notification", stamp: "1970-01-01T00:01:39Z")
+        await settle()
+        let identifier = try #require(center.added.first)
+        #expect(center.kinds == [.geminiPermission])
+        #expect(notifications.shouldPresent(identifier: identifier))
+        try observe("Notification", stamp: "1970-01-01T00:01:39Z")
+        try observe("AfterAgent", stamp: tied ? "1970-01-01T00:01:39Z" : "1970-01-01T00:01:40Z")
+        #expect(store.sessions.first?.state == (tied ? .unknown : .turnEnded))
+        await settle()
+        #expect(center.added.count == 1)
+        #expect(center.removed.contains(identifier))
+    }
+
     @Test func oneEpisodeDeduplicatesAndResolutionRemovesNotification() async throws {
         let (store, notifications, center, _) = make()
         await notifications.start()

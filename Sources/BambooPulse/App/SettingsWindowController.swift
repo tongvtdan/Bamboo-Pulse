@@ -7,9 +7,9 @@ import PulseCore
 final class SettingsWindowController: NSWindowController {
     private let preferences: DisplayPreferences
 
-    init(store: MonitorStore, preferences: DisplayPreferences, attention: NeedsYouNotifications, manageSetup: (() -> Void)? = nil, usesExistingMonitoring: Bool = false) {
+    init(store: MonitorStore, preferences: DisplayPreferences, attention: NeedsYouNotifications, manageSetup: (() -> Void)? = nil, usesExistingMonitoring: Bool = false, manageGemini: (() -> Void)? = nil) {
         self.preferences = preferences
-        let content = NSHostingController(rootView: SettingsView(preferences: preferences, store: store, attention: attention, manageSetup: manageSetup, usesExistingMonitoring: usesExistingMonitoring))
+        let content = NSHostingController(rootView: SettingsView(preferences: preferences, store: store, attention: attention, manageSetup: manageSetup, usesExistingMonitoring: usesExistingMonitoring, manageGemini: manageGemini))
         content.sizingOptions = [.preferredContentSize]
         let window = NSWindow(contentViewController: content)
         window.title = "Bamboo Pulse Settings"
