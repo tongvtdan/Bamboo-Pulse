@@ -1,5 +1,6 @@
 import AppKit
 import PulseCore
+import SQLite3
 import Testing
 
 @Suite("Chat opening and keyboard commands") @MainActor
@@ -68,6 +69,47 @@ struct SessionNavigationTests {
         pending?.resume(returning: first.threadID)
         #expect(try await task.value)
         #expect(opens == 1)
+    }
+
+    @Test func geminiTitlesAndFallbackOpenTheirOwnConversations() throws {
+        let database = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: database) }
+        var connection: OpaquePointer?
+        try #require(sqlite3_open(database.path, &connection) == SQLITE_OK)
+        defer { sqlite3_close(connection) }
+        let first = "11111111-1111-4111-8111-111111111111"
+        let second = "22222222-2222-4222-8222-222222222222"
+        let sql = """
+            CREATE TABLE conversation_summaries(conversation_id TEXT PRIMARY KEY, title TEXT);
+            INSERT INTO conversation_summaries VALUES ('\(first)', 'Bar setup'), ('\(second)', 'Gate setup');
+            """
+        try #require(sqlite3_exec(connection, sql, nil, nil, nil) == SQLITE_OK)
+        let store = MonitorStore(geminiTitleDatabase: database)
+        let hooks = try [first, second].map { id in
+            let data = try JSONSerialization.data(withJSONObject: ["conversationId": id, "modelName": "gemini-4-hydrogen-medium",
+                "workspacePaths": ["/fixture"], "transcriptPath": "/Users/test/.gemini/antigravity-ide/brain/" + id + "/.system_generated/logs/transcript.jsonl"])
+            return try #require(GeminiHook.project(data, event: "PreInvocation", workspace: "/fixture", home: "/Users/test", now: 100000))
+        }
+        store.updateGemini(hooks, at: time())
+        var opened: [URL] = []
+        let navigation = SessionNavigationController(lookup: { _ in nil },
+            geminiLookup: { id in store.sessions.first { $0.id == id } },
+            geminiOpener: { url, done in opened.append(url); done(nil) }, clock: { time() })
+        func check(_ row: Session, expected: String) throws {
+            try #require(navigation.openGemini(row, synthetic: false))
+            let url = try #require(opened.last)
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
+            #expect(items?.first { $0.name == "cascadeId" }?.value == expected)
+            #expect(items?.first { $0.name == "path" }?.value == "/fixture")
+        }
+        try check(#require(store.sessions.first { $0.title == "Gate setup" }), expected: second)
+        try check(#require(store.sessions.first { $0.title == "Bar setup" }), expected: first)
+        try #require(sqlite3_exec(connection, "UPDATE conversation_summaries SET title=' '", nil, nil, nil) == SQLITE_OK)
+        store.updateGemini(hooks, at: time())
+        for row in store.sessions {
+            #expect(row.title == "Gemini chat " + row.alias)
+            try check(row, expected: try #require(row.geminiDestination).conversationID)
+        }
     }
 
     @Test func geminiClicksUseLatestBoundTargetAndRespectPreviewExpiryAndRepeatedClicks() throws {

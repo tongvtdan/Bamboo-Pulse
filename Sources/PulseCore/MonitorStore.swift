@@ -8,6 +8,7 @@ public final class MonitorStore {
     @ObservationIgnored private var geminiEvents: [String: GeminiHook] = [:]
     @ObservationIgnored private var latestGeminiClock: MonitorTime?
     @ObservationIgnored private var nextGeminiChange = Double.infinity
+    private let geminiTitles: GeminiTitles
     public var sessions: [Session] { codexSessions + geminiSessions }
     public var displayHealth: FeedHealth { geminiSessions.isEmpty ? health : .monitoring }
 
@@ -42,6 +43,7 @@ public final class MonitorStore {
             }
         }
         nextGeminiChange = .infinity
+        let titles = geminiTitles.lookup(geminiEvents.values.compactMap(\.destination))
         let rows = geminiEvents.values.sorted { $0.id < $1.id }.map { event in
             let age = time.wallMS - event.observed
             let cli = event.id.hasPrefix("cli-")
@@ -51,7 +53,7 @@ public final class MonitorStore {
             let timing = fresh ? StatusTiming(startedContinuousMS: time.continuousMS - age,
                                               validUntilContinuousMS: time.continuousMS - age + 30000,
                                               isLowerBound: false) : nil
-            return Session(id: "gemini:" + event.id, alias: alias, name: (cli ? "Gemini CLI " : "Gemini chat ") + alias,
+            return Session(id: "gemini:" + event.id, alias: alias, name: event.destination.flatMap { titles[$0.conversationID] } ?? ((cli ? "Gemini CLI " : "Gemini chat ") + alias),
                            state: fresh ? event.state : .unknown, ageMS: age,
                            remainingMS: max(0, 30000 - age), statusTiming: timing,
                            observationContinuity: cli && fresh ? event.observed.bitPattern : nil,
@@ -80,7 +82,9 @@ public final class MonitorStore {
     @ObservationIgnored private var ageFloor: Double = 0
     @ObservationIgnored private var continuitySequence: UInt64 = 0
 
-    public init(synthetic: Bool = false) {
+    public init(synthetic: Bool = false, geminiTitleDatabase: URL? = nil) {
+        geminiTitles = GeminiTitles(database: geminiTitleDatabase ?? FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".gemini/antigravity/conversation_summaries.db"))
         isSynthetic = synthetic
         health = synthetic ? .synthetic : .connecting
         if synthetic {
