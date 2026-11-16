@@ -28,8 +28,8 @@ public final class MonitorStore {
                   event.observed > 0, event.observed >= (previous?.observed ?? 0),
                   previous != nil || geminiEvents.count < 128 else { continue }
             if let previous, event.observed == previous.observed {
-                // No sequence number distinguishes conflicting CLI events at the same millisecond.
-                if event.id.hasPrefix("cli-"), event.state != previous.state {
+                // Equal-time observations cannot resolve conflicting states or destinations.
+                if event.state != previous.state || event.destination != previous.destination {
                     geminiEvents[event.id] = GeminiHook(id: event.id, state: .unknown, observed: event.observed)
                 }
                 continue
@@ -54,7 +54,8 @@ public final class MonitorStore {
             return Session(id: "gemini:" + event.id, alias: alias, name: (cli ? "Gemini CLI " : "Gemini chat ") + alias,
                            state: fresh ? event.state : .unknown, ageMS: age,
                            remainingMS: max(0, 30000 - age), statusTiming: timing,
-                           observationContinuity: cli && fresh ? event.observed.bitPattern : nil)
+                           observationContinuity: cli && fresh ? event.observed.bitPattern : nil,
+                           geminiDestination: fresh ? event.destination : nil)
         }
         if rows != geminiSessions { geminiSessions = rows }
         return rows.filter { requests.contains($0.id) && $0.state == .needsAttention }.map(\.id)

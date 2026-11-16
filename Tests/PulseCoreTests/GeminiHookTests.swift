@@ -75,9 +75,14 @@ struct GeminiHookTests {
         #expect(GeminiHookSocket(directory: directory) == nil)
         let working = try #require(try event("PreInvocation"))
         let raw = try JSONEncoder().encode(working)
-        #expect(Set((try JSONSerialization.jsonObject(with: raw) as? [String: Any])!.keys) == ["id", "state", "observed"])
+        #expect(Set((try JSONSerialization.jsonObject(with: raw) as? [String: Any])!.keys) == ["id", "state", "observed", "destination"])
         GeminiHookSocket.send(working, directory: directory)
         #expect(socket.drain() == [working])
+        var longTarget = working
+        longTarget.destination = GeminiDestination(conversationID: chat, workspace: "/" + String(repeating: "a", count: 900))
+        #expect(try JSONEncoder().encode(longTarget).count > 512)
+        GeminiHookSocket.send(longTarget, directory: directory)
+        #expect(socket.drain() == [longTarget])
     }
 
     @MainActor @Test func cliEventsUseSourceTimeAndRejectUnrelatedAlerts() throws {
@@ -141,6 +146,42 @@ struct GeminiHookTests {
         #expect(throws: (any Error).self) { try StrictJSON.object(frame) }
         frame.append(0x20)
         #expect(GeminiHook.projectCLI(frame, event: "AfterAgent") == nil)
+    }
+
+    @MainActor @Test func destinationBindsToObservedSessionAndExpires() throws {
+        let working = try #require(try event("PreInvocation"))
+        let target = try #require(working.destination)
+        #expect(target.sessionID == "gemini:" + working.id)
+        let url = try #require(target.url)
+        #expect(url.scheme == "antigravity-ide" && url.host == "google.google-antigravity")
+        let query = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
+        #expect(query == [URLQueryItem(name: "cascadeId", value: chat), URLQueryItem(name: "path", value: "/fixture")])
+        let store = MonitorStore()
+        store.updateGemini([working], at: MonitorTime(wallMS: 1000, continuousMS: 1000))
+        let session = try #require(store.sessions.first)
+        #expect(session.geminiURL(at: MonitorTime(wallMS: 1001, continuousMS: 1001)) == url)
+        #expect(session.geminiURL(at: MonitorTime(wallMS: 31000, continuousMS: 31000)) == nil)
+        store.updateGemini([], at: MonitorTime(wallMS: 31000, continuousMS: 31000))
+        #expect(store.sessions.first?.geminiDestination == nil)
+        #expect(session.displaying(.unknown).geminiDestination == nil)
+        var forged = working
+        forged.destination = GeminiDestination(conversationID: UUID().uuidString.lowercased(), workspace: "/fixture")
+        #expect(!forged.valid)
+        var moved = working
+        moved.destination = GeminiDestination(conversationID: chat, workspace: "/other")
+        let ambiguous = MonitorStore()
+        ambiguous.updateGemini([working, moved], at: MonitorTime(wallMS: 1000, continuousMS: 1000))
+        #expect(ambiguous.sessions.first?.state == .unknown)
+        #expect(ambiguous.sessions.first?.geminiDestination == nil)
+        let legacy = try JSONDecoder().decode(GeminiHook.self, from: JSONSerialization.data(withJSONObject:
+            ["id": working.id, "state": "WORKING", "observed": 1000]))
+        #expect(legacy.valid && legacy.destination == nil)
+        for workspace in ["relative", "/fixture/../other", "/fixture\n", "/" + String(repeating: "a", count: 1025)] {
+            #expect(GeminiDestination(conversationID: chat, workspace: workspace).url == nil)
+        }
+        #expect(GeminiDestination(conversationID: chat + "?prompt=run", workspace: "/fixture").url == nil)
+        let spaced = GeminiDestination(conversationID: chat, workspace: "/a path/with&query=#")
+        #expect(URLComponents(url: try #require(spaced.url), resolvingAgainstBaseURL: false)?.queryItems?.last?.value == spaced.workspace)
     }
 
     @Test func workspaceSetupPreservesUserFiles() throws {

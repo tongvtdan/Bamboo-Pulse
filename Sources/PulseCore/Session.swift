@@ -11,6 +11,17 @@ public struct Session: Identifiable, Sendable, Equatable {
     /// App-local observation continuity; never a provider or authorization identity.
     public internal(set) var observationContinuity: UInt64? = nil
 
+    public internal(set) var geminiDestination: GeminiDestination? = nil
+
+    public func geminiURL(at time: MonitorTime) -> URL? {
+        guard isGemini, [.working, .turnEnded].contains(state),
+              let destination = geminiDestination, destination.sessionID == id,
+              let timing = statusTiming, time.continuousMS.isFinite,
+              time.continuousMS >= timing.startedContinuousMS,
+              time.continuousMS < timing.validUntilContinuousMS else { return nil }
+        return destination.url
+    }
+
     public var title: String { name ?? "Name unavailable" }
     public var isGemini: Bool { id.hasPrefix("gemini:") }
     public var provider: String { isGemini ? "Gemini" : "Codex" }
@@ -18,7 +29,8 @@ public struct Session: Identifiable, Sendable, Equatable {
     public func displaying(_ state: SessionState) -> Session {
         Session(id: id, alias: alias, name: name, state: state, ageMS: ageMS, remainingMS: remainingMS,
                 statusTiming: state == self.state && state != .unknown ? statusTiming : nil,
-                observationContinuity: state != .unknown ? observationContinuity : nil)
+                observationContinuity: state != .unknown ? observationContinuity : nil,
+                geminiDestination: state != .unknown ? geminiDestination : nil)
     }
 }
 

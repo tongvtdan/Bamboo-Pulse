@@ -70,6 +70,38 @@ struct SessionNavigationTests {
         #expect(opens == 1)
     }
 
+    @Test func geminiClicksUseLatestBoundTargetAndRespectPreviewExpiryAndRepeatedClicks() throws {
+        let store = MonitorStore()
+        let chat = "11111111-1111-4111-8111-111111111111"
+        func observe(model: String = "gemini-4-hydrogen-medium", at ms: Double = 100000) throws {
+            let data = try JSONSerialization.data(withJSONObject: ["conversationId": chat, "modelName": model,
+                "workspacePaths": ["/fixture"], "transcriptPath": "/Users/test/.gemini/antigravity-ide/brain/" + chat + "/.system_generated/logs/transcript.jsonl"])
+            let hook = try #require(GeminiHook.project(data, event: "PreInvocation", workspace: "/fixture", home: "/Users/test", now: ms))
+            store.updateGemini([hook], at: time(ms - 100000))
+        }
+        try observe()
+        let original = try #require(store.sessions.first)
+        var opened: [URL] = []
+        var pending: (@MainActor (String?) -> Void)?
+        var now = time()
+        var codexLookups = 0
+        let navigation = SessionNavigationController(lookup: { _ in codexLookups += 1; return nil },
+            geminiLookup: { id in store.sessions.first { $0.id == id } },
+            geminiOpener: { url, completion in opened.append(url); pending = completion }, clock: { now })
+        #expect(!navigation.openGemini(original, synthetic: true))
+        navigation.activate(original, synthetic: false)
+        #expect(opened.count == 1 && codexLookups == 0)
+        #expect(URLComponents(url: opened[0], resolvingAgainstBaseURL: false)?.queryItems?.first?.value == chat)
+        #expect(!navigation.openGemini(original, synthetic: false))
+        pending?(nil)
+        try observe(model: "claude", at: 100001)
+        #expect(!navigation.openGemini(original, synthetic: false))
+        try observe(at: 100002)
+        now = time(30002)
+        #expect(!navigation.openGemini(original, synthetic: false))
+        #expect(opened.count == 1)
+    }
+
     @Test func appCommandsKeepSettingsAndQuitWithoutACloseShortcut() {
         var settingsOpened = 0
         let controller = PulseApplicationMenu { settingsOpened += 1 }

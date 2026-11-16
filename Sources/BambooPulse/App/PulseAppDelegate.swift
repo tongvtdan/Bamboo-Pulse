@@ -44,7 +44,11 @@ final class PulseAppDelegate: NSObject, NSApplicationDelegate {
             }
             attention?.update(geminiRequests: requests)
         })
-        let navigation = SessionNavigationController(lookup: { try await feed.chatThreadID(for: $0) })
+        let navigation = SessionNavigationController(lookup: { try await feed.chatThreadID(for: $0) },
+            geminiLookup: { [store] id in
+                store.updateGemini([], at: .now)
+                return store.sessions.first { $0.id == id }
+            })
         self.navigation = navigation
         settings = SettingsWindowController(store: store, preferences: preferences, attention: attention,
             manageSetup: runtime != nil && !store.isSynthetic ? { [weak self] in

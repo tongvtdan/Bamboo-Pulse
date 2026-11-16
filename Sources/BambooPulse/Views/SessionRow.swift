@@ -26,9 +26,9 @@ struct SessionRow: View {
                 .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(isFocused ? Color.accentColor : .clear, lineWidth: 1.5) }
         }
         .buttonStyle(.plain)
-        .disabled(isSynthetic || session.isGemini)
+        .disabled(isSynthetic || (session.isGemini && session.geminiURL(at: time) == nil))
         .onKeyPress(.return) {
-            guard !isSynthetic, !session.isGemini else { return .ignored }
+            guard !isSynthetic, !session.isGemini || session.geminiURL(at: time) != nil else { return .ignored }
             activate()
             return .handled
         }
@@ -38,7 +38,9 @@ struct SessionRow: View {
 
     private var actionHint: String {
         if isSynthetic { return "Sample session. Opening a real chat is unavailable." }
-        if session.isGemini { return "Continue in the originating Gemini session." }
+        if session.isGemini {
+            return session.geminiURL(at: .now) != nil ? "Open this conversation in Antigravity IDE." : "Continue in the originating Gemini session."
+        }
         return "Open this chat in Codex"
     }
 

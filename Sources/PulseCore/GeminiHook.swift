@@ -3,12 +3,39 @@ import CryptoKit
 import Darwin
 import Foundation
 
+/// A local navigation target carried only by IDE events and retained in memory.
+public struct GeminiDestination: Codable, Equatable, Sendable {
+    public let conversationID: String
+    public let workspace: String
+
+    public var sessionID: String {
+        let digest = SHA256.hash(data: Data(("gemini-ide/" + conversationID).utf8)).prefix(16)
+            .map { String(format: "%02x", $0) }.joined()
+        return "gemini:" + digest
+    }
+
+    public var url: URL? {
+        guard UUID(uuidString: conversationID)?.uuidString.lowercased() == conversationID,
+              workspace.hasPrefix("/"), workspace.utf8.count <= 1024,
+              !workspace.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }),
+              URL(fileURLWithPath: workspace).standardizedFileURL.path == workspace else { return nil }
+        var parts = URLComponents()
+        parts.scheme = "antigravity-ide"
+        parts.host = "google.google-antigravity"
+        parts.path = "/open-conversation"
+        parts.queryItems = [URLQueryItem(name: "cascadeId", value: conversationID),
+                            URLQueryItem(name: "path", value: workspace)]
+        return parts.url
+    }
+}
+
 /// Reduces an IDE hook to a provider-scoped pseudonym and an observed state.
 /// Never opens transcriptPath or sends the incoming JSON to the monitor.
 public struct GeminiHook: Codable, Equatable {
     let id: String
     let state: SessionState
     let observed: Double
+    var destination: GeminiDestination? = nil
 
     public static func project(_ data: Data, event: String, workspace: String, home: String, now: Double) -> Self? {
         guard ["PreInvocation", "Stop"].contains(event),
@@ -31,7 +58,10 @@ public struct GeminiHook: Codable, Equatable {
         if gemini && event == "PreInvocation" { state = .working }
         if gemini && event == "Stop", let idle = object["fullyIdle"] as? NSNumber,
            CFGetTypeID(idle) == CFBooleanGetTypeID(), idle.boolValue { state = .turnEnded }
-        return Self(id: id, state: state, observed: now)
+        let destination = GeminiDestination(conversationID: conversation, workspace: workspace)
+        guard destination.url != nil else { return nil }
+        return Self(id: id, state: state, observed: now,
+                    destination: state == .unknown ? nil : destination)
     }
 
     // CLI frames also carry the prompt and model response.
@@ -67,6 +97,7 @@ public struct GeminiHook: Codable, Equatable {
         let states: [SessionState] = cli ? [.turnEnded, .needsAttention] : [.working, .turnEnded, .unknown]
         return digest.utf8.count == 32 && digest.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
             && states.contains(state) && observed.isFinite
+            && (destination == nil || (!cli && state != .unknown && destination?.sessionID == "gemini:" + id && destination?.url != nil))
     }
 }
 
@@ -76,6 +107,7 @@ public final class GeminiHookSocket {
     private let fd: Int32
     private let lock: Int32
     private let path: String
+    private static let packetLimit = 8192
     public static var directory: String { "/tmp/bamboo-pulse-gemini-" + String(getuid()) }
 
     private static func privateNode(_ path: String, _ type: mode_t, _ mode: mode_t) -> Bool {
@@ -117,8 +149,8 @@ public final class GeminiHookSocket {
 
     public static func send(_ event: GeminiHook, directory: String = directory) {
         let path = directory + "/events.sock"
-        guard privateNode(directory, S_IFDIR, 0o700), privateNode(path, S_IFSOCK, 0o600),
-              let data = try? JSONEncoder().encode(event) else { return }
+        guard event.valid, privateNode(directory, S_IFDIR, 0o700), privateNode(path, S_IFSOCK, 0o600),
+              let data = try? JSONEncoder().encode(event), data.count <= packetLimit else { return }
         let fd = socket(AF_UNIX, SOCK_DGRAM, 0)
         guard fd >= 0 else { return }
         defer { close(fd) }
@@ -129,15 +161,19 @@ public final class GeminiHookSocket {
 
     public func drain() -> [GeminiHook] {
         var events = [GeminiHook]()
-        var buffer = [UInt8](repeating: 0, count: 513)
+        var buffer = [UInt8](repeating: 0, count: Self.packetLimit + 1)
         for _ in 0..<128 {
             let size = recv(fd, &buffer, buffer.count, MSG_DONTWAIT)
             if size < 0 { break }
-            guard size > 0, size <= 512 else { continue }
+            guard size > 0, size <= Self.packetLimit else { continue }
             let data = Data(buffer.prefix(size))
             guard let fields = try? StrictJSON.object(data) as? [String: Any],
-                  Set(fields.keys) == ["id", "state", "observed"],
+                  Set(fields.keys).subtracting(["destination"]) == ["id", "state", "observed"],
                   let event = try? JSONDecoder().decode(GeminiHook.self, from: data), event.valid else { continue }
+            if let target = fields["destination"], !(target is NSNull) {
+                guard let target = target as? [String: Any],
+                      Set(target.keys) == ["conversationID", "workspace"] else { continue }
+            }
             events.append(event)
         }
         return events
