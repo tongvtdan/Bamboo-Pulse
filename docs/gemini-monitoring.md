@@ -34,3 +34,5 @@ The installed Antigravity IDE 1.11.0 extension builds its own notification links
 Native route compatibility must be checked against the installed IDE. A missing IDE or rejected open operation produces an actionable error. Gemini CLI observations provide state notifications and have no IDE destination. Dan approved the added navigation metadata for local integration on 16 November 2026. The complete signed app is installed locally.
 
 The native route opened the matching conversation in the BambooX workspace during the 16 November 2026 check. After local installation, Dan reported “Correct conversation opens” when clicking the row after a fresh IDE turn. Automated checks passed 59 core tests and 114 tests in each app scheme. [Candidate source identity and navigation evidence](evidence/gemini-ide-navigation-2026-11-16.json).
+
+[Review Preview image](images/gemini-synthetic-preview.png) renders production SessionRow views with labeled synthetic fixtures. Live click navigation is covered by the navigation tests and Dan’s recorded confirmation.
